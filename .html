@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Perforación Petrolera Onshore</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #info-panel {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(0, 0, 0, 0.85); color: #fff;
+            padding: 15px; border-radius: 8px; max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h2 { margin-top: 0; color: #ff9800; font-size: 1.2rem; }
+        p { font-size: 0.9rem; line-height: 1.4; color: #ddd; }
+        .instructions {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); color: #fff; padding: 8px 16px;
+            border-radius: 20px; font-size: 0.85rem; pointer-events: none;
+        }
+    </style>
+    <!-- Three.js y OrbitControls desde CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="info-panel">
+        <h2 id="title">Yacimiento Onshore</h2>
+        <p id="description">Haz clic sobre cualquier estructura (Torre, Árbol de Navidad, Silo o Piletas) para inspeccionar su función en la perforación y producción.</p>
+    </div>
+
+    <div class="instructions">🖱️ Clic izquierdo + arrastrar: Rotar cámara | Rueda: Zoom | Clic en objetos: Inspeccionar</div>
+
+    <script>
+        // 1. Escena, Cámara y Renderizador
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xdceeff);
+        scene.fog = new THREE.Fog(0xdceeff, 20, 100);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(25, 15, 30);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 4, 0);
+        controls.update();
+
+        // 2. Iluminación
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 3. Terreno (Desierto)
+        const groundGeo = new THREE.PlaneGeometry(100, 100);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.9 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Locación de hormigón
+        const padGeo = new THREE.BoxGeometry(30, 0.2, 20);
+        const padMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const pad = new THREE.Mesh(padGeo, padMat);
+        pad.position.set(0, 0.1, 0);
+        pad.receiveShadow = true;
+        scene.add(pad);
+
+        // 4. Objetos del Simulador (Componentes interactivos)
+        const clickableObjects = [];
+
+        function createInteractiveObject(geo, mat, pos, name, info) {
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(...pos);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { name, info };
+            scene.add(mesh);
+            clickableObjects.push(mesh);
+            return mesh;
+        }
+
+        // --- Torre de Perforación (Derrick) + BOP ---
+        const derrickGroup = new THREE.Group();
+        const frameMat = new THREE.MeshStandardMaterial({ color: 0x3366cc, wireframe: true });
+        const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 3, 14, 4), frameMat);
+        tower.position.y = 7;
+        tower.castShadow = true;
+        derrickGroup.add(tower);
+
+        // BOP (Preventor) en la base de la torre
+        const bopGeo = new THREE.CylinderGeometry(0.8, 0.8, 2, 8);
+        const bopMat = new THREE.MeshStandardMaterial({ color: 0xcc0000 });
+        const bop = new THREE.Mesh(bopGeo, bopMat);
+        bop.position.y = 1;
+        derrickGroup.add(bop);
+
+        derrickGroup.position.set(0, 0, 0);
+        scene.add(derrickGroup);
+
+        // Hitbox invisible para clic en la Torre
+        createInteractiveObject(
+            new THREE.BoxGeometry(4, 14, 4),
+            new THREE.MeshBasicMaterial({ visible: false }),
+            [0, 7, 0],
+            "Torre de Perforación y BOP",
+            "La torre (Derrick) soporta la sarta de perforación. En su base está el BOP (Blowout Preventer), un conjunto de válvulas de alta presión para evitar reventones de fluido."
+        );
+
+        // --- Árbol de Navidad (Producción) ---
+        const xmasTreeGroup = new THREE.Group();
+        const pipeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+        const verticalPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3), pipeMat);
+        const crossPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 2), pipeMat);
+        crossPipe.rotation.z = Math.PI / 2;
+        crossPipe.position.y = 0.5;
+        xmasTreeGroup.add(verticalPipe, crossPipe);
+
+        createInteractiveObject(
+            new THREE.BoxGeometry(2, 3, 2),
+            new THREE.MeshStandardMaterial({ color: 0x228b22 }),
+            [8, 1.5, 0],
+            "Árbol de Navidad (Christmas Tree)",
+            "Conjunto de válvulas y conectores instalados tras finalizar la perforación. Regula y controla el flujo de petróleo/gas extraído hacia las líneas de producción."
+        );
+
+        // --- Silos de Arena (Proppant) ---
+        const siloGeo = new THREE.CylinderGeometry(1.5, 1.5, 6, 16);
+        const siloMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.5 });
+        createInteractiveObject(
+            siloGeo, siloMat, [-8, 3, -5],
+            "Silos de Arena (Proppant)",
+            "Almacenan la arena especial (agente sostén) utilizada durante el fracturamiento hidráulico para mantener abiertas las fisuras de la roca."
+        );
+
+        // --- Piletas / Tanques de Lodo ---
+        const tankGeo = new THREE.BoxGeometry(6, 2, 3);
+        const tankMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+        createInteractiveObject(
+            tankGeo, tankMat, [-8, 1, 5],
+            "Piletas de Lodo (Mud Tanks)",
+            "Tanques donde se prepara y filtra el lodo de perforación, necesario para lubricar la broca y arrastrar los recortes de roca a la superficie."
+        );
+
+        // 5. Raycasting (Detección de Clics)
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableObjects);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                document.getElementById('title').innerText = hit.userData.name;
+                document.getElementById('description').innerText = hit.userData.info;
+            }
+        });
+
+        // 6. Ajuste de ventana y animación
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
