@@ -1,187 +1,825 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Perforación Petrolera Onshore</title>
-    <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
-        #info-panel {
-            position: absolute; top: 10px; left: 10px;
-            background: rgba(0, 0, 0, 0.85); color: #fff;
-            padding: 15px; border-radius: 8px; max-width: 300px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        h2 { margin-top: 0; color: #ff9800; font-size: 1.2rem; }
-        p { font-size: 0.9rem; line-height: 1.4; color: #ddd; }
-        .instructions {
-            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); color: #fff; padding: 8px 16px;
-            border-radius: 20px; font-size: 0.85rem; pointer-events: none;
-        }
-    </style>
-    <!-- Three.js y OrbitControls desde CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador 3D | Perforación Petrolera Onshore</title>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;overflow:hidden;
+ font-family:Arial,Helvetica,sans-serif;
+ background:#101820;color:#fff
+}
+canvas{display:block}
+#info-panel{
+ position:absolute;top:18px;left:18px;
+ width:340px;max-width:calc(100vw - 36px);
+ padding:20px;background:rgba(10,18,27,.94);
+ border:1px solid #354454;border-radius:13px;
+ box-shadow:0 8px 30px #0008;
+ z-index:5;backdrop-filter:blur(10px)
+}
+.logo{color:#ff9800;font-size:11px;font-weight:bold;letter-spacing:2px}
+h1{font-size:19px;margin:9px 0 5px}
+h2{font-size:18px;color:#ff9800;margin:0 0 12px}
+p{font-size:13px;line-height:1.55;color:#d1d9e0}
+.section-label{
+ color:#ffad33;font-size:10px;font-weight:bold;
+ letter-spacing:1.5px;margin-top:15px
+}
+#description{min-height:75px}
+#function-text{color:#fff}
+#status{
+ display:inline-block;padding:5px 9px;border-radius:5px;
+ background:#173b2d;color:#6de4a0;font-size:10px;
+ margin-top:8px
+}
+#controls{
+ position:absolute;top:18px;right:18px;z-index:5;
+ display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;
+ max-width:calc(100vw - 390px)
+}
+button{
+ background:#172431;color:white;border:1px solid #455767;
+ border-radius:7px;padding:10px 13px;cursor:pointer;
+ font-size:12px;transition:.2s
+}
+button:hover{background:#ff9800;color:#111;border-color:#ff9800}
+button.active{background:#ff9800;color:#111}
+#legend{
+ position:absolute;right:18px;bottom:55px;
+ background:#101b28eF;padding:14px;border-radius:9px;
+ border:1px solid #364757;font-size:11px;z-index:4
+}
+#legend div{margin:6px 0;color:#dce4ea}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px}
+#instructions{
+ position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+ background:#101820eF;padding:10px 18px;border-radius:30px;
+ border:1px solid #455767;font-size:11px;color:#dce4ea;
+ white-space:nowrap;z-index:4
+}
+#loading{
+ position:absolute;inset:0;display:grid;place-items:center;
+ background:#101820;z-index:20;color:#ff9800;
+ font-size:17px;font-weight:bold
+}
+#footer{
+ position:absolute;bottom:15px;left:18px;
+ color:#aab7c4;font-size:10px;z-index:4
+}
+@media(max-width:700px){
+ #info-panel{top:10px;left:10px;width:260px;padding:13px}
+ h1{font-size:15px}h2{font-size:15px}
+ p{font-size:11px}
+ #controls{top:auto;bottom:80px;right:10px;max-width:55%}
+ button{padding:8px;font-size:10px}
+ #legend{display:none}
+ #instructions{font-size:9px;bottom:10px}
+ #footer{display:none}
+}
+</style>
 </head>
+
 <body>
 
-    <div id="info-panel">
-        <h2 id="title">Yacimiento Onshore</h2>
-        <p id="description">Haz clic sobre cualquier estructura (Torre, Árbol de Navidad, Silo o Piletas) para inspeccionar su función en la perforación y producción.</p>
-    </div>
+<div id="loading">CARGANDO SIMULADOR 3D...</div>
 
-    <div class="instructions">🖱️ Clic izquierdo + arrastrar: Rotar cámara | Rueda: Zoom | Clic en objetos: Inspeccionar</div>
+<div id="info-panel">
+ <div class="logo">OIL & GAS ENGINEERING | 3D</div>
+ <h1>SIMULADOR DE PERFORACIÓN</h1>
+ <p>Locación petrolera Onshore — Exploración, perforación y producción.</p>
+ <div class="section-label">EQUIPO SELECCIONADO</div>
+ <h2 id="title">Vista general del yacimiento</h2>
+ <p id="description">
+  Explorá la locación petrolera. Seleccioná cualquier equipo para conocer
+  su funcionamiento y su importancia dentro de las operaciones.
+ </p>
+ <div class="section-label">FUNCIÓN OPERATIVA</div>
+ <p id="function-text">Seleccioná un componente para consultar sus características técnicas.</p>
+ <span id="status">● SISTEMA OPERATIVO</span>
+</div>
 
-    <script>
-        // 1. Escena, Cámara y Renderizador
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xdceeff);
-        scene.fog = new THREE.Fog(0xdceeff, 20, 100);
+<div id="controls">
+ <button id="play" class="active">▶ Iniciar</button>
+ <button id="pause">Ⅱ Pausar</button>
+ <button id="reset">↻ Reiniciar</button>
+ <button id="rotation">⟳ Rotación: ON</button>
+ <button id="labels">Etiquetas: ON</button>
+ <button id="home">⌂ Vista general</button>
+</div>
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(25, 15, 30);
+<div id="legend">
+ <b style="color:#ff9800">REFERENCIAS</b>
+ <div><span class="dot" style="background:#3976b9"></span>Perforación</div>
+ <div><span class="dot" style="background:#d52c24"></span>Control de pozo</div>
+ <div><span class="dot" style="background:#d97706"></span>Sistema de lodo</div>
+ <div><span class="dot" style="background:#ddd"></span>Agente sostén</div>
+ <div><span class="dot" style="background:#269b56"></span>Producción</div>
+</div>
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
+<div id="footer">SIMULACIÓN EDUCATIVA 3D | TECNICATURA EN PETRÓLEO Y GAS</div>
 
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, 4, 0);
-        controls.update();
+<div id="instructions">
+ 🖱 Arrastrar: Rotar | Rueda: Zoom | Clic: Inspeccionar equipos
+</div>
 
-        // 2. Iluminación
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambientLight);
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
+/* =====================================
+   1. ESCENA Y CONFIGURACIÓN
+===================================== */
 
-        // 3. Terreno (Desierto)
-        const groundGeo = new THREE.PlaneGeometry(100, 100);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.9 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fc4df);
+scene.fog = new THREE.Fog(0x9fc4df, 65, 145);
 
-        // Locación de hormigón
-        const padGeo = new THREE.BoxGeometry(30, 0.2, 20);
-        const padMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-        const pad = new THREE.Mesh(padGeo, padMat);
-        pad.position.set(0, 0.1, 0);
-        pad.receiveShadow = true;
-        scene.add(pad);
+const camera = new THREE.PerspectiveCamera(
+ 48, window.innerWidth/window.innerHeight, 0.1, 500
+);
+camera.position.set(27,19,29);
 
-        // 4. Objetos del Simulador (Componentes interactivos)
-        const clickableObjects = [];
+const renderer = new THREE.WebGLRenderer({
+ antialias:true, powerPreference:"high-performance"
+});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.8));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.15;
+document.body.appendChild(renderer.domElement);
 
-        function createInteractiveObject(geo, mat, pos, name, info) {
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(...pos);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            mesh.userData = { name, info };
-            scene.add(mesh);
-            clickableObjects.push(mesh);
-            return mesh;
-        }
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,5,0);
+controls.enableDamping=true;
+controls.dampingFactor=.06;
+controls.maxPolarAngle=Math.PI*.49;
+controls.minDistance=8;
+controls.maxDistance=75;
 
-        // --- Torre de Perforación (Derrick) + BOP ---
-        const derrickGroup = new THREE.Group();
-        const frameMat = new THREE.MeshStandardMaterial({ color: 0x3366cc, wireframe: true });
-        const tower = new THREE.Mesh(new THREE.CylinderGeometry(1, 3, 14, 4), frameMat);
-        tower.position.y = 7;
-        tower.castShadow = true;
-        derrickGroup.add(tower);
+/* =====================================
+   2. ILUMINACIÓN
+===================================== */
 
-        // BOP (Preventor) en la base de la torre
-        const bopGeo = new THREE.CylinderGeometry(0.8, 0.8, 2, 8);
-        const bopMat = new THREE.MeshStandardMaterial({ color: 0xcc0000 });
-        const bop = new THREE.Mesh(bopGeo, bopMat);
-        bop.position.y = 1;
-        derrickGroup.add(bop);
+scene.add(new THREE.HemisphereLight(0xe8f5ff,0x8d7650,2));
 
-        derrickGroup.position.set(0, 0, 0);
-        scene.add(derrickGroup);
+const sun=new THREE.DirectionalLight(0xffffff,3);
+sun.position.set(-25,45,30);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-35;
+sun.shadow.camera.right=35;
+sun.shadow.camera.top=35;
+sun.shadow.camera.bottom=-35;
+sun.shadow.bias=-0.0003;
+scene.add(sun);
 
-        // Hitbox invisible para clic en la Torre
-        createInteractiveObject(
-            new THREE.BoxGeometry(4, 14, 4),
-            new THREE.MeshBasicMaterial({ visible: false }),
-            [0, 7, 0],
-            "Torre de Perforación y BOP",
-            "La torre (Derrick) soporta la sarta de perforación. En su base está el BOP (Blowout Preventer), un conjunto de válvulas de alta presión para evitar reventones de fluido."
-        );
+/* =====================================
+   3. MATERIALES Y FUNCIONES
+===================================== */
 
-        // --- Árbol de Navidad (Producción) ---
-        const xmasTreeGroup = new THREE.Group();
-        const pipeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-        const verticalPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 3), pipeMat);
-        const crossPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 2), pipeMat);
-        crossPipe.rotation.z = Math.PI / 2;
-        crossPipe.position.y = 0.5;
-        xmasTreeGroup.add(verticalPipe, crossPipe);
+const mat=(color,metalness=0,roughness=.65)=>
+ new THREE.MeshStandardMaterial({color,metalness,roughness});
 
-        createInteractiveObject(
-            new THREE.BoxGeometry(2, 3, 2),
-            new THREE.MeshStandardMaterial({ color: 0x228b22 }),
-            [8, 1.5, 0],
-            "Árbol de Navidad (Christmas Tree)",
-            "Conjunto de válvulas y conectores instalados tras finalizar la perforación. Regula y controla el flujo de petróleo/gas extraído hacia las líneas de producción."
-        );
+const materials={
+ steel:mat(0x65798b,.75,.35),
+ blue:mat(0x2867a5,.5,.4),
+ dark:mat(0x202b35,.7,.35),
+ red:mat(0xc92727,.45,.4),
+ green:mat(0x18894a,.5,.35),
+ orange:mat(0xe68b19,.35,.4),
+ concrete:mat(0x777d80,0,.9),
+ sand:mat(0xc4a273,0,.95),
+ white:mat(0xd8e0e4,.3,.4),
+ black:mat(0x15191c,.2,.5),
+ yellow:mat(0xe6b52a,.3,.5)
+};
 
-        // --- Silos de Arena (Proppant) ---
-        const siloGeo = new THREE.CylinderGeometry(1.5, 1.5, 6, 16);
-        const siloMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.5 });
-        createInteractiveObject(
-            siloGeo, siloMat, [-8, 3, -5],
-            "Silos de Arena (Proppant)",
-            "Almacenan la arena especial (agente sostén) utilizada durante el fracturamiento hidráulico para mantener abiertas las fisuras de la roca."
-        );
+function box(parent,w,h,d,material,x,y,z){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ mesh.position.set(x,y,z);
+ mesh.castShadow=true;
+ mesh.receiveShadow=true;
+ parent.add(mesh);
+ return mesh;
+}
 
-        // --- Piletas / Tanques de Lodo ---
-        const tankGeo = new THREE.BoxGeometry(6, 2, 3);
-        const tankMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
-        createInteractiveObject(
-            tankGeo, tankMat, [-8, 1, 5],
-            "Piletas de Lodo (Mud Tanks)",
-            "Tanques donde se prepara y filtra el lodo de perforación, necesario para lubricar la broca y arrastrar los recortes de roca a la superficie."
-        );
+function cylinder(parent,r1,r2,h,material,x,y,z,segments=16){
+ const mesh=new THREE.Mesh(
+  new THREE.CylinderGeometry(r1,r2,h,segments),material
+ );
+ mesh.position.set(x,y,z);
+ mesh.castShadow=true;
+ mesh.receiveShadow=true;
+ parent.add(mesh);
+ return mesh;
+}
 
-        // 5. Raycasting (Detección de Clics)
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
+function beam(parent,a,b,r,material){
+ const start=new THREE.Vector3(...a);
+ const end=new THREE.Vector3(...b);
+ const dir=end.clone().sub(start);
+ const mesh=new THREE.Mesh(
+  new THREE.CylinderGeometry(r,r,dir.length(),8),material
+ );
+ mesh.position.copy(start).add(end).multiplyScalar(.5);
+ mesh.quaternion.setFromUnitVectors(
+  new THREE.Vector3(0,1,0),dir.normalize()
+ );
+ mesh.castShadow=true;
+ parent.add(mesh);
+ return mesh;
+}
 
-        window.addEventListener('click', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+function pipe(parent,a,b,r,material){
+ return beam(parent,a,b,r,material);
+}
 
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObjects(clickableObjects);
+function group(name,description,func){
+ const g=new THREE.Group();
+ g.userData={name,description,func};
+ scene.add(g);
+ sectors.push(g);
+ return g;
+}
 
-            if (intersects.length > 0) {
-                const hit = intersects[0].object;
-                document.getElementById('title').innerText = hit.userData.name;
-                document.getElementById('description').innerText = hit.userData.info;
-            }
-        });
+const sectors=[];
+const animated=[];
+const labels=[];
 
-        // 6. Ajuste de ventana y animación
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+/* =====================================
+   4. TERRENO Y PLATEA
+===================================== */
 
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        animate();
-    </script>
+const ground=new THREE.Mesh(
+ new THREE.PlaneGeometry(150,150,1,1),
+ materials.sand
+);
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+// Platea de hormigón
+box(scene,32,.35,24,materials.concrete,0,.18,0);
+
+// Caminos internos
+box(scene,45,.12,5,materials.sand,0,.1,15);
+
+// Límites amarillos de seguridad
+for(let x=-15;x<=15;x+=3){
+ box(scene,.09,.04,.09,materials.yellow,x,.4,-11.5);
+ box(scene,.09,.04,.09,materials.yellow,x,.4,11.5);
+}
+
+// Postes de seguridad
+for(let x=-15;x<=15;x+=5){
+ cylinder(scene,.08,.08,1.4,materials.yellow,x,.9,-11.5,8);
+ cylinder(scene,.08,.08,1.4,materials.yellow,x,.9,11.5,8);
+}
+
+// Suelo auxiliar
+box(scene,12,.12,8,materials.dark,-9,.43,0);
+
+/* =====================================
+   5. ETIQUETAS 3D
+===================================== */
+
+function addLabel(text,x,y,z){
+ const canvas=document.createElement('canvas');
+ canvas.width=512;
+ canvas.height=96;
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='rgba(9,20,31,.88)';
+ ctx.fillRect(0,0,512,96);
+ ctx.strokeStyle='#ff9800';
+ ctx.lineWidth=5;
+ ctx.strokeRect(3,3,506,90);
+ ctx.font='bold 35px Arial';
+ ctx.fillStyle='white';
+ ctx.textAlign='center';
+ ctx.textBaseline='middle';
+ ctx.fillText(text,256,48);
+ const texture=new THREE.CanvasTexture(canvas);
+ const sprite=new THREE.Sprite(
+  new THREE.SpriteMaterial({map:texture,transparent:true,depthTest:false})
+ );
+ sprite.position.set(x,y,z);
+ sprite.scale.set(5,1,1);
+ scene.add(sprite);
+ labels.push(sprite);
+}
+
+/* =====================================
+   6. TORRE DE PERFORACIÓN
+===================================== */
+
+const tower=group(
+ "TORRE DE PERFORACIÓN (DERRICK)",
+ "Estructura metálica diseñada para soportar los equipos de izaje, la sarta de perforación y los sistemas necesarios para realizar el pozo.",
+ "Permite introducir y extraer la sarta de perforación, soportar las cargas mecánicas y ejecutar las maniobras de perforación."
+);
+
+const towerMetal=materials.blue;
+const towerSteel=materials.steel;
+
+// Subestructura elevada
+box(tower,9,1,9,towerSteel,0,3.2,0);
+
+// Patas de torre
+const corners=[
+ [-3.5,0,-3.5],[3.5,0,-3.5],
+ [-3.5,0,3.5],[3.5,0,3.5]
+];
+
+for(const [x,_,z] of corners){
+ beam(tower,[x,.5,z],[x*.48,15,z*.48],.16,towerMetal);
+}
+
+// Marcos y diagonales
+for(let y=1;y<15;y+=2.2){
+ const factor=1-y/35;
+ const width=3.5*factor;
+ for(const z of [-1,1]){
+  beam(tower,[-width,y,z*width],[width,y,z*width],.07,towerSteel);
+ }
+ for(const x of [-1,1]){
+  beam(tower,[x*width,y,-width],[x*width,y,width],.07,towerSteel);
+ }
+}
+
+for(let y=1;y<13;y+=2.2){
+ const f1=1-(y/35);
+ const f2=1-((y+2.2)/35);
+ const w1=3.5*f1,w2=3.5*f2;
+ for(const z of [-1,1]){
+  beam(tower,[-w1,y,z*w1],[w2,y+2.2,z*w2],.055,towerSteel);
+  beam(tower,[w1,y,z*w1],[-w2,y+2.2,z*w2],.055,towerSteel);
+ }
+}
+
+// Plataforma superior y corona
+box(tower,2.7,.7,2.7,towerSteel,0,15,0);
+for(let i=-1;i<=1;i++){
+ cylinder(tower,.3,.3,1.2,materials.dark,i*.7,15.9,0);
+}
+
+// Poleas superiores
+const pulley=cylinder(tower,.8,.8,.35,materials.orange,0,16.4,0,24);
+pulley.rotation.x=Math.PI/2;
+
+// Plataforma de trabajo
+box(tower,7,.18,7,towerSteel,0,2.3,0);
+
+// Escaleras laterales
+for(let y=0;y<9;y+=.5){
+ beam(tower,[-4,y,-3.5],[-4,y,-2.5],.035,materials.yellow);
+}
+
+// Top Drive animado
+const topDrive=new THREE.Group();
+tower.add(topDrive);
+box(topDrive,1.8,1.7,1.5,materials.orange,0,0,0);
+box(topDrive,2.1,.3,1.8,towerSteel,0,.85,0);
+cylinder(topDrive,.35,.35,1.2,materials.dark,0,-1.1,0);
+const driveMotor=cylinder(topDrive,.65,.65,.8,materials.blue,0,-.1,.85);
+driveMotor.rotation.x=Math.PI/2;
+topDrive.position.set(0,12.5,0);
+animated.push({type:"drive",object:topDrive,base:12.5});
+
+// Sarta de perforación
+const drillString=new THREE.Group();
+tower.add(drillString);
+cylinder(drillString,.13,.13,12,materials.steel,0,-6,0,12);
+cylinder(drillString,.2,.2,.7,materials.dark,0,-12,0,12);
+drillString.position.y=12;
+animated.push({type:"string",object:drillString});
+
+// Broca
+const bit=cylinder(tower,.45,.1,.9,materials.dark,0,.2,0,12);
+bit.position.y=-.1;
+
+/* =====================================
+   7. BOP - PREVENTOR DE REVENTONES
+===================================== */
+
+const bop=group(
+ "BOP - PREVENTOR DE REVENTONES",
+ "El Blowout Preventer es un conjunto de válvulas de alta presión instalado en la cabeza del pozo. Permite controlar el pozo ante una surgencia.",
+ "Su función principal es cerrar el pozo y contener la presión cuando se presenta una entrada no deseada de fluidos de formación."
+);
+
+box(bop,3.5,1.4,2.4,materials.red,0,1.3,0);
+cylinder(bop,.85,.85,2,materials.dark,0,2.9,0);
+cylinder(bop,.95,.95,.35,materials.steel,0,2.1,0);
+
+for(const z of [-1.5,1.5]){
+ cylinder(bop,.5,.5,1.1,materials.red,0,1.3,z);
+ cylinder(bop,.28,.28,.4,materials.yellow,0,1.3,z*1.5);
+}
+
+for(const x of [-1,1]){
+ cylinder(bop,.45,.45,1.4,materials.steel,x*2,1.4,0,12);
+ cylinder(bop,.2,.2,.5,materials.red,x*2.7,1.4,0,12);
+}
+
+for(let x=-1.2;x<=1.2;x+=.4){
+ cylinder(bop,.045,.045,.12,materials.white,x,2.05,1.25,8);
+}
+
+bop.position.set(0,0,0);
+
+/* =====================================
+   8. SISTEMA DE LODO
+===================================== */
+
+const mud=group(
+ "SISTEMA DE CIRCULACIÓN DE LODO",
+ "El sistema de lodo prepara, almacena, bombea y recupera el fluido de perforación. El lodo transporta recortes, lubrica y ayuda a controlar la presión del pozo.",
+ "El circuito conduce el fluido desde las piletas hacia las bombas, luego al interior de la sarta, retorna por el espacio anular y pasa por las zarandas para separar los recortes."
+);
+
+// Piletas horizontales
+for(let i=0;i<3;i++){
+ const x=-11+i*4;
+ box(mud,3.4,1.8,3.2,materials.orange,x,1.3,5);
+ box(mud,3.1,.08,2.9,materials.dark,x,2.25,5);
+ box(mud,3,.08,2.8,mat(0x6b8490,.2,.3),x,1.9,5);
+ // Refuerzos
+ for(let j=-1;j<=1;j++){
+  box(mud,.08,1.5,.08,materials.steel,x+j*1.5,1.3,6.6);
+ }
+}
+
+// Bombas de lodo
+for(let i=0;i<2;i++){
+ const x=-11+i*4;
+ box(mud,1.8,1.3,1.5,materials.dark,x,1,0);
+ cylinder(mud,.6,.6,.6,materials.red,x,1.8,0);
+ cylinder(mud,.35,.35,1,materials.steel,x,2.4,0);
+ box(mud,1.2,.3,.8,materials.orange,x,1.8,-.9);
+}
+
+// Zarandas vibratorias
+for(let i=0;i<2;i++){
+ const x=-10+i*4;
+ const shaker=new THREE.Group();
+ mud.add(shaker);
+ box(shaker,3,.4,2,materials.dark,0,0,0);
+ box(shaker,2.7,.15,1.7,materials.steel,0,.3,0);
+ for(let j=-1;j<=1;j++){
+  beam(shaker,[-1.3,.4,j*.5],[1.3,.4,j*.5],.045,materials.white);
+ }
+ shaker.position.set(x,.9,-3);
+ animated.push({type:"shaker",object:shaker,base:0});
+}
+
+// Tuberías de inyección y retorno
+pipe(mud,[-7,2.3,0],[-4,2.3,0],.13,materials.red);
+pipe(mud,[-4,2.3,0],[-4,3,0],.13,materials.red);
+pipe(mud,[-4,3,0],[0,3,0],.13,materials.red);
+pipe(mud,[-11,2,5],[-11,2,2],.12,materials.steel);
+pipe(mud,[-7,2,5],[-7,2,2],.12,materials.steel);
+pipe(mud,[-11,2,-3],[-11,2,-1],.12,materials.steel);
+
+// Pasarelas
+box(mud,13,.18,1,materials.steel,-8,.5,8);
+
+// Indicadores de circulación animados
+const flowParticles=[];
+for(let i=0;i<12;i++){
+ const particle=new THREE.Mesh(
+  new THREE.SphereGeometry(.11,8,8),
+  mat(0x55d9ed,.1,.2)
+ );
+ scene.add(particle);
+ flowParticles.push(particle);
+}
+
+/* =====================================
+   9. SILOS DE ARENA
+===================================== */
+
+const silos=group(
+ "SILOS DE ARENA - AGENTE SOSTÉN",
+ "Los silos almacenan arena especial o agente sostén (proppant), utilizado en la fracturación hidráulica de pozos no convencionales.",
+ "Durante la fracturación hidráulica, el agente sostén mantiene abiertas las fracturas generadas en la roca para permitir el flujo de hidrocarburos hacia el pozo."
+);
+
+for(let i=0;i<2;i++){
+ const x=-10+i*5;
+ // Patas
+ for(let a=0;a<4;a++){
+  const px=x+Math.cos(a*Math.PI/2)*1.1;
+  const pz=-8+Math.sin(a*Math.PI/2)*1.1;
+  beam(silos,[px,.5,pz],[px,.1,pz],.09,materials.steel);
+ }
+ // Cuerpo cilíndrico
+ cylinder(silos,1.3,1.3,5,materials.white,x,3.4,-8,24);
+ // Techo
+ cylinder(silos,0,1.3,.9,materials.steel,x,6.35,-8,24);
+ // Cono inferior
+ cylinder(silos,.1,1.3,1.5,materials.white,x,1.25,-8,24);
+ // Descarga
+ cylinder(silos,.2,.2,.9,materials.dark,x,.35,-8);
+ // Refuerzos
+ for(let y=2;y<=5;y+=1.5){
+  const ring=new THREE.Mesh(
+   new THREE.TorusGeometry(1.32,.06,6,24),
+   materials.steel
+  );
+  ring.rotation.x=Math.PI/2;
+  ring.position.set(x,y,-8);
+  silos.add(ring);
+ }
+}
+
+// Conexión de descarga
+pipe(silos,[-10,.3,-8],[-10,.3,-5],.12,materials.orange);
+pipe(silos,[-5,.3,-8],[-5,.3,-5],.12,materials.orange);
+
+/* =====================================
+   10. ÁRBOL DE NAVIDAD
+===================================== */
+
+const christmas=group(
+ "ÁRBOL DE NAVIDAD - PRODUCCIÓN",
+ "El árbol de Navidad es un conjunto de válvulas y conexiones instalado en la cabeza del pozo durante la etapa de completación y producción.",
+ "Controla, regula y permite cerrar el flujo de petróleo y gas desde el pozo hacia las instalaciones de producción."
+);
+
+const cx=10,cz=0;
+
+// Base
+box(christmas,3,.5,3,materials.dark,cx,.5,cz);
+
+// Cuerpo vertical
+cylinder(christmas,.42,.42,3.5,materials.green,cx,2.5,cz);
+cylinder(christmas,.7,.7,.35,materials.steel,cx,1,cz);
+
+// Válvula superior
+cylinder(christmas,.65,.65,.45,materials.red,cx,4.3,cz);
+cylinder(christmas,.3,.3,1,materials.green,cx,5,cz);
+
+// Válvulas laterales
+for(const side of [-1,1]){
+ cylinder(christmas,.4,.4,1.8,materials.green,cx+side*1.1,3.1,cz,12);
+ cylinder(christmas,.5,.5,.4,materials.red,cx+side*1.1,3.1,cz);
+ cylinder(christmas,.3,.3,.3,materials.steel,cx+side*2,3.1,cz);
+}
+
+// Volantes rojos
+const wheels=[];
+for(const [x,y,z] of [[cx,5.8,cz],[cx-2.1,3.1,cz],[cx+2.1,3.1,cz]]){
+ const wheel=new THREE.Mesh(
+  new THREE.TorusGeometry(.38,.065,8,20),
+  materials.red
+ );
+ wheel.position.set(x,y,z);
+ wheel.rotation.y=Math.PI/2;
+ christmas.add(wheel);
+ wheels.push(wheel);
+ cylinder(christmas,.09,.09,.6,materials.steel,x,y,z);
+}
+
+// Línea de producción
+pipe(christmas,[cx+2,3.1,0],[15,3.1,0],.16,materials.green);
+pipe(christmas,[15,3.1,0],[15,1,0],.16,materials.green);
+box(christmas,1,.8,1,materials.dark,15,.6,0);
+
+/* =====================================
+   11. TUBERÍAS GENERALES
+===================================== */
+
+const pipes=group(
+ "INFRAESTRUCTURA Y TUBERÍAS",
+ "Red de conducción formada por tuberías, colectores, conexiones y soportes industriales que permiten transportar fluidos entre los distintos equipos de superficie.",
+ "Las líneas de proceso conectan los sistemas de perforación y producción. Su diseño debe contemplar presión, caudal, materiales y condiciones operativas."
+);
+
+// Línea de producción hacia salida
+pipe(pipes,[15,1,0],[19,1,0],.16,materials.green);
+pipe(pipes,[19,1,0],[19,.4,0],.16,materials.green);
+
+// Soportes de tubería
+for(let x=10;x<=19;x+=3){
+ box(pipes,.18,1.2,.18,materials.steel,x,.6,1);
+}
+
+// Barandas de seguridad
+for(let x=-14;x<=-4;x+=2){
+ cylinder(pipes,.055,.055,1,materials.yellow,x,.9,10,8);
+}
+
+// Colector
+pipe(pipes,[9,2.4,0],[9,2.4,4],.13,materials.green);
+pipe(pipes,[9,2.4,4],[15,2.4,4],.13,materials.green);
+
+/* =====================================
+   12. CARTELES DE EQUIPOS
+===================================== */
+
+addLabel("DERRICK / TORRE",0,18,0);
+addLabel("BOP",0,5,3);
+addLabel("SISTEMA DE LODO",-8,5,5);
+addLabel("SILOS DE ARENA",-7,8,-8);
+addLabel("CHRISTMAS TREE",11,7,0);
+addLabel("PRODUCCIÓN",18,3,0);
+
+/* =====================================
+   13. SELECCIÓN INTERACTIVA
+===================================== */
+
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+let selected=null;
+let pointerDown=null;
+let simulationRunning=true;
+let rotationEnabled=true;
+let labelsVisible=true;
+
+function selectSector(sector){
+ selected=sector;
+
+ document.getElementById("title").textContent=sector.userData.name;
+ document.getElementById("description").textContent=sector.userData.description;
+ document.getElementById("function-text").textContent=sector.userData.func;
+
+ // Resaltar el sector seleccionado
+ sectors.forEach(s=>{
+  s.traverse(obj=>{
+   if(!obj.isMesh || !obj.material || !obj.material.emissive) return;
+   if(!obj.userData.originalEmissive){
+    obj.userData.originalEmissive=obj.material.emissive.getHex();
+   }
+   obj.material.emissive.setHex(s===sector?0x33300a:obj.userData.originalEmissive);
+  });
+ });
+
+ document.getElementById("status").textContent="● EQUIPO INSPECCIONADO";
+}
+
+function pointerPosition(event){
+ const rect=renderer.domElement.getBoundingClientRect();
+ pointer.x=((event.clientX-rect.left)/rect.width)*2-1;
+ pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;
+}
+
+renderer.domElement.addEventListener("pointerdown",e=>{
+ pointerDown={x:e.clientX,y:e.clientY};
+});
+
+renderer.domElement.addEventListener("pointerup",e=>{
+ if(!pointerDown)return;
+ const moved=Math.hypot(e.clientX-pointerDown.x,e.clientY-pointerDown.y);
+ pointerDown=null;
+ if(moved>5)return;
+
+ pointerPosition(e);
+ raycaster.setFromCamera(pointer,camera);
+
+ const hits=raycaster.intersectObjects(sectors,true);
+ if(hits.length){
+  let obj=hits[0].object;
+  while(obj && !obj.userData.name)obj=obj.parent;
+  if(obj && obj.userData.name)selectSector(obj);
+ }
+});
+
+/* =====================================
+   14. ANIMACIONES
+===================================== */
+
+let elapsed=0;
+
+function animate(){
+ requestAnimationFrame(animate);
+
+ if(simulationRunning){
+  elapsed+=.016;
+
+  animated.forEach(item=>{
+   if(item.type==="drive"){
+    item.object.position.y=item.base+Math.sin(elapsed*1.5)*.55;
+   }
+   if(item.type==="string"){
+    item.object.rotation.y+=.025;
+   }
+   if(item.type==="shaker"){
+    item.object.position.y=item.base+Math.sin(elapsed*35)*.035;
+    item.object.rotation.z=Math.sin(elapsed*35)*.012;
+   }
+  });
+
+  wheels.forEach(w=>w.rotation.z+=.02);
+
+  flowParticles.forEach((p,i)=>{
+   const t=(elapsed*.45+i/flowParticles.length)%1;
+   p.position.set(-7+t*7,2.5,0);
+  });
+ }
+
+ if(rotationEnabled && simulationRunning){
+  // Movimiento leve de ambiente, sin forzar la cámara del usuario.
+ }
+
+ controls.update();
+ renderer.render(scene,camera);
+}
+animate();
+
+/* =====================================
+   15. BOTONES DE CONTROL
+===================================== */
+
+document.getElementById("play").onclick=()=>{
+ simulationRunning=true;
+ document.getElementById("status").textContent="● SIMULACIÓN ACTIVA";
+ document.getElementById("play").classList.add("active");
+ document.getElementById("pause").classList.remove("active");
+};
+
+document.getElementById("pause").onclick=()=>{
+ simulationRunning=false;
+ document.getElementById("status").textContent="Ⅱ SIMULACIÓN PAUSADA";
+ document.getElementById("pause").classList.add("active");
+ document.getElementById("play").classList.remove("active");
+};
+
+document.getElementById("reset").onclick=()=>{
+ elapsed=0;
+ animated.forEach(item=>{
+  if(item.type==="drive")item.object.position.y=item.base;
+  if(item.type==="string")item.object.rotation.set(0,0,0);
+  if(item.type==="shaker"){
+   item.object.position.y=item.base;
+   item.object.rotation.z=0;
+  }
+ });
+ document.getElementById("status").textContent="● ANIMACIONES REINICIADAS";
+};
+
+document.getElementById("rotation").onclick=()=>{
+ rotationEnabled=!rotationEnabled;
+ document.getElementById("rotation").textContent=
+  rotationEnabled?"⟳ Rotación: ON":"⟳ Rotación: OFF";
+ document.getElementById("rotation").classList.toggle("active",rotationEnabled);
+};
+
+document.getElementById("labels").onclick=()=>{
+ labelsVisible=!labelsVisible;
+ labels.forEach(l=>l.visible=labelsVisible);
+ document.getElementById("labels").textContent=
+  labelsVisible?"Etiquetas: ON":"Etiquetas: OFF";
+};
+
+document.getElementById("home").onclick=()=>{
+ camera.position.set(27,19,29);
+ controls.target.set(0,5,0);
+ controls.update();
+
+ document.getElementById("title").textContent="Vista general del yacimiento";
+ document.getElementById("description").textContent=
+  "Explorá la locación petrolera. Seleccioná cualquier equipo para conocer su funcionamiento.";
+ document.getElementById("function-text").textContent=
+  "Perforación, control de pozo, circulación de lodo, completación y producción.";
+ document.getElementById("status").textContent="● VISTA GENERAL";
+ selected=null;
+ sectors.forEach(s=>s.traverse(obj=>{
+  if(obj.isMesh&&obj.material?.emissive&&obj.userData.originalEmissive!==undefined){
+   obj.material.emissive.setHex(obj.userData.originalEmissive);
+  }
+ }));
+};
+
+/* =====================================
+   16. REDIMENSIONAMIENTO
+===================================== */
+
+window.addEventListener("resize",()=>{
+ camera.aspect=window.innerWidth/window.innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(window.innerWidth,window.innerHeight);
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.8));
+});
+
+document.getElementById("loading").style.display="none";
+
+</script>
 </body>
 </html>
